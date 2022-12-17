@@ -66,7 +66,7 @@ fn main() -> anyhow::Result<()> {
         }
     };
 
-    let mut client = ExpClient
+    // let mut client = 
 
     loop {
         // Blue!

@@ -8,6 +8,8 @@ linker = "ldproxy"
 # Future - necessary for the experimental "native build" of esp-idf-sys with ESP32C3
 # See also https://github.com/ivmarkov/embuild/issues/16
 rustflags = ["-C", "default-linker-libraries"]
+# Uncomment for ESP-IDF 5 and later. Don't forget to also uncomment the `ESP_IDF_VERSION = "release/v5.0"`parameter in the `[env]` section below
+#rustflags = ["--cfg", "espidf_time64", "-C", "default-linker-libraries"]
 
 [unstable]
 build-std = ["std", "panic_abort"]
@@ -18,7 +20,7 @@ build-std = ["std", "panic_abort"]
 # ESP_IDF_VERSION = { value = "master" }
 
 # Comment out this when using the PlatformIO build, i.e. `cargo build --features pio` (it only supports `v4.3.2`)
-ESP_IDF_VERSION = { value = "release/v4.4" }
+ESP_IDF_VERSION = "release/v4.4"
 
 # These configurations will pick up your custom "sdkconfig.release", "sdkconfig.debug" or "sdkconfig.defaults[.*]" files
 # that you might put in the root of the project
@@ -27,5 +29,5 @@ ESP_IDF_VERSION = { value = "release/v4.4" }
 #ESP_IDF_SDKCONFIG = { value = "sdkconfig.release;sdkconfig.debug" }
 ESP_IDF_SDKCONFIG_DEFAULTS = { value = "sdkconfig.defaults;sdkconfig.defaults.esp32" }
 
-RUST_ESP32_STD_DEMO_WIFI_PASS = { value = "gcn18jay" }
-RUST_ESP32_STD_DEMO_WIFI_SSID = { value = "fenderbass" }
+RUST_ESP32_STD_DEMO_WIFI_PASS = { value = "passwd" }
+RUST_ESP32_STD_DEMO_WIFI_SSID = { value = "wifissid" }

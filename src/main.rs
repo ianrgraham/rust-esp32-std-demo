@@ -22,6 +22,8 @@ compile_error!(
     "The `esp32s3_usb_otg` feature can only be built for the `xtensa-esp32s3-espidf` target."
 );
 
+use core::ffi;
+
 use std::fs;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -54,7 +56,6 @@ use embedded_svc::timer::*;
 use embedded_svc::utils::mqtt::client::ConnState;
 use embedded_svc::wifi::*;
 
-use esp_idf_svc::eth::*;
 use esp_idf_svc::eventloop::*;
 use esp_idf_svc::httpd as idf;
 use esp_idf_svc::httpd::ServerRegistry;
@@ -75,7 +76,7 @@ use esp_idf_hal::peripheral;
 use esp_idf_hal::prelude::*;
 use esp_idf_hal::spi;
 
-use esp_idf_sys::{self, c_types};
+use esp_idf_sys;
 use esp_idf_sys::{esp, EspError};
 
 use display_interface_spi::SPIInterfaceNoCS;
@@ -109,6 +110,8 @@ thread_local! {
     static TLS: RefCell<u32> = RefCell::new(13);
 }
 
+static CS: esp_idf_hal::task::CriticalSection = esp_idf_hal::task::CriticalSection::new();
+
 fn main() -> Result<()> {
     esp_idf_sys::link_patches();
 
@@ -133,6 +136,48 @@ fn main() -> Result<()> {
     let peripherals = Peripherals::take().unwrap();
     #[allow(unused)]
     let pins = peripherals.pins;
+
+    // If interrupt critical sections work fine, the code below should panic with the IWDT triggering
+    // {
+    //     info!("Testing interrupt critical sections");
+
+    //     let mut x = 0;
+
+    //     esp_idf_hal::interrupt::free(move || {
+    //         for _ in 0..2000000 {
+    //             for _ in 0..2000000 {
+    //                 x += 1;
+
+    //                 if x == 1000000 {
+    //                     break;
+    //                 }
+    //             }
+    //         }
+    //     });
+    // }
+
+    {
+        info!("Testing critical sections");
+
+        {
+            let th = {
+                let _guard = CS.enter();
+
+                let th = std::thread::spawn(move || {
+                    info!("Waiting for critical section");
+                    let _guard = CS.enter();
+
+                    info!("Critical section acquired");
+                });
+
+                std::thread::sleep(Duration::from_secs(5));
+
+                th
+            };
+
+            th.join().unwrap();
+        }
+    }
 
     #[allow(unused)]
     let sysloop = EspSystemEventLoop::take()?;
@@ -211,7 +256,7 @@ fn main() -> Result<()> {
     #[cfg(feature = "qemu")]
     let eth = eth_configure(
         &sysloop,
-        Box::new(EspEth::wrap(EthDriver::new_openeth(
+        Box::new(esp_idf_svc::eth::EspEth::wrap(EthDriver::new_openeth(
             peripherals.mac,
             sysloop.clone(),
         )?)?),
@@ -221,7 +266,7 @@ fn main() -> Result<()> {
     #[cfg(feature = "ip101")]
     let eth = eth_configure(
         &sysloop,
-        Box::new(EspEth::wrap(EthDriver::new_rmii(
+        Box::new(esp_idf_svc::eth::EspEth::wrap(EthDriver::new_rmii(
             peripherals.mac,
             pins.gpio25,
             pins.gpio26,
@@ -242,7 +287,7 @@ fn main() -> Result<()> {
     #[cfg(feature = "w5500")]
     let eth = eth_configure(
         &sysloop,
-        Box::new(EspEth::wrap(EthDriver::new_spi(
+        Box::new(esp_idf_svc::eth::EspEth::wrap(EthDriver::new_spi(
             peripherals.spi2,
             pins.gpio13,
             pins.gpio12,
@@ -369,7 +414,7 @@ fn test_print() {
 
     children.push("foo");
     children.push("bar");
-    println!("More complex print {:?}", children);
+    println!("More complex print {children:?}");
 }
 
 #[allow(deprecated)]
@@ -386,7 +431,7 @@ fn test_atomics() {
         (r1, r2)
     };
 
-    println!("Result: {}, {}", r1, r2);
+    println!("Result: {r1}, {r2}");
 }
 
 fn test_threads() {
@@ -556,7 +601,7 @@ fn test_timer(
                 "rust-esp32-std-demo",
                 QoS::AtMostOnce,
                 false,
-                format!("Now is {:?}", now).as_bytes(),
+                format!("Now is {now:?}").as_bytes(),
             )
             .unwrap();
     })?;
@@ -576,7 +621,7 @@ impl EventLoopMessage {
 }
 
 impl EspTypedEventSource for EventLoopMessage {
-    fn source() -> *const c_types::c_char {
+    fn source() -> *const ffi::c_char {
         b"DEMO-SERVICE\0".as_ptr() as *const _
     }
 }
@@ -666,10 +711,10 @@ fn test_mqtt_client() -> Result<EspMqttClient<ConnState<MessageImpl, EspError>>>
 
 #[cfg(feature = "experimental")]
 mod experimental {
-    use super::{thread, TcpListener, TcpStream};
-    use log::info;
+    use core::ffi;
 
-    use esp_idf_sys::c_types;
+    use log::info;
+    use std::{net::TcpListener, net::TcpStream, thread};
 
     pub fn test() -> anyhow::Result<()> {
         #[cfg(not(esp_idf_version = "4.3"))]
@@ -1136,10 +1181,60 @@ fn httpd_ulp_endpoints(
 fn httpd(
     mutex: Arc<(Mutex<Option<u32>>, Condvar)>,
 ) -> Result<esp_idf_svc::http::server::EspHttpServer> {
-    use embedded_svc::http::server::{Method, Request, Response};
+    use embedded_svc::http::server::{
+        Connection, Handler, HandlerResult, Method, Middleware, Query, Request, Response,
+    };
     use embedded_svc::io::Write;
+    use esp_idf_svc::http::server::{fn_handler, EspHttpConnection, EspHttpServer};
 
-    let mut server = esp_idf_svc::http::server::EspHttpServer::new(&Default::default())?;
+    struct SampleMiddleware {}
+
+    impl<C> Middleware<C> for SampleMiddleware
+    where
+        C: Connection,
+    {
+        fn handle<'a, H>(&'a self, connection: &'a mut C, handler: &'a H) -> HandlerResult
+        where
+            H: Handler<C>,
+        {
+            let req = Request::wrap(connection);
+
+            info!("Middleware called with uri: {}", req.uri());
+
+            let connection = req.release();
+
+            if let Err(err) = handler.handle(connection) {
+                if !connection.is_response_initiated() {
+                    let mut resp = Request::wrap(connection).into_status_response(500)?;
+
+                    write!(&mut resp, "ERROR: {err}")?;
+                } else {
+                    // Nothing can be done as the error happened after the response was initiated, propagate further
+                    return Err(err);
+                }
+            }
+
+            Ok(())
+        }
+    }
+
+    struct SampleMiddleware2 {}
+
+    impl<C> Middleware<C> for SampleMiddleware2
+    where
+        C: Connection,
+    {
+        fn handle<'a, H>(&'a self, connection: &'a mut C, handler: &'a H) -> HandlerResult
+        where
+            H: Handler<C>,
+        {
+            info!("Middleware2 called");
+
+            handler.handle(connection)
+        }
+    }
+
+    let mut server = EspHttpServer::new(&Default::default())?;
 
     server
         .fn_handler("/", Method::Get, |req| {
@@ -1148,7 +1243,7 @@ fn httpd(
 
             Ok(())
         })?
-        .fn_handler("/foo", Method::Get, |_req| {
+        .fn_handler("/foo", Method::Get, |_| {
             Result::Err("Boo, something happened!".into())
         })?
         .fn_handler("/bar", Method::Get, |req| {
@@ -1157,9 +1252,24 @@ fn httpd(
 
             Ok(())
         })?
-        .fn_handler("/panic", Method::Get, |_req| {
-            panic!("User requested a panic!")
-        })?;
+        .fn_handler("/panic", Method::Get, |_| panic!("User requested a panic!"))?
+        .handler(
+            "/middleware",
+            Method::Get,
+            SampleMiddleware {}.compose(fn_handler(|_| {
+                Result::Err("Boo, something happened!".into())
+            })),
+        )?
+        .handler(
+            "/middleware2",
+            Method::Get,
+            SampleMiddleware2 {}.compose(SampleMiddleware {}.compose(fn_handler(|req| {
+                req.into_ok_response()?
+                    .write_all("Middleware2 handler called".as_bytes())?;
+
+                Ok(())
+            }))),
+        )?;
 
     #[cfg(esp32s2)]
     httpd_ulp_endpoints(&mut server, mutex)?;
