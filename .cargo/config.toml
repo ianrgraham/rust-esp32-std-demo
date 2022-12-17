@@ -1,29 +1,10 @@
 [build]
-# Uncomment the relevant target for your chip here (ESP32, ESP32-S2, ESP32-S3 or ESP32-C3)
-target = "xtensa-esp32-espidf"
-#target = "xtensa-esp32s2-espidf"
-#target = "xtensa-esp32s3-espidf"
-#target = "riscv32imc-esp-espidf"
-
-[target.xtensa-esp32-espidf]
-linker = "ldproxy"
-# Uncomment for ESP-IDF 5 and later
-#rustflags = ["--cfg", "espidf_time64"]
-
-[target.xtensa-esp32s2-espidf]
-linker = "ldproxy"
-# Uncomment for ESP-IDF 5 and later
-#rustflags = ["--cfg", "espidf_time64"]
-
-[target.xtensa-esp32s3-espidf]
-linker = "ldproxy"
-# Uncomment for ESP-IDF 5 and later
-#rustflags = ["--cfg", "espidf_time64"]
+target = "riscv32imc-esp-espidf"
 
 [target.riscv32imc-esp-espidf]
 linker = "ldproxy"
 # Uncomment for ESP-IDF 5 and later
-#rustflags = ["--cfg", "espidf_time64", "-C", "default-linker-libraries"]
+# rustflags = ["--cfg", "espidf_time64", "-C", "default-linker-libraries"]
 # Future - necessary for the experimental "native build" of esp-idf-sys with ESP32C3
 # See also https://github.com/ivmarkov/embuild/issues/16
 rustflags = ["-C", "default-linker-libraries"]
@@ -34,7 +15,7 @@ build-std = ["std", "panic_abort"]
 
 [env]
 # Uncomment this to build against ESP-IDF 5.0 (master)
-#ESP_IDF_VERSION = { value = "master" }
+# ESP_IDF_VERSION = { value = "master" }
 
 # Comment out this when using the PlatformIO build, i.e. `cargo build --features pio` (it only supports `v4.3.2`)
 ESP_IDF_VERSION = { value = "release/v4.4" }
@@ -44,4 +25,7 @@ ESP_IDF_VERSION = { value = "release/v4.4" }
 # The easiest way to generate a full "sdkconfig" configuration (as opposed to manually enabling only the necessary flags via "sdkconfig.defaults[.*]"
 # is by running "cargo pio espidf menuconfig" (that is, if using the pio builder)
 #ESP_IDF_SDKCONFIG = { value = "sdkconfig.release;sdkconfig.debug" }
-ESP_IDF_SDKCONFIG_DEFAULTS = { value = "sdkconfig.defaults;sdkconfig.defaults.esp32;sdkconfig.defaults.esp32s2" }
+ESP_IDF_SDKCONFIG_DEFAULTS = { value = "sdkconfig.defaults;sdkconfig.defaults.esp32" }
+
+RUST_ESP32_STD_DEMO_WIFI_PASS = { value = "gcn18jay" }
+RUST_ESP32_STD_DEMO_WIFI_SSID = { value = "fenderbass" }
