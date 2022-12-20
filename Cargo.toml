@@ -86,6 +86,10 @@ embuild = { version = "0.31", features = ["elf"] }
 anyhow = "1"
 
 [[bin]]
+name = "old-tutorial"
+path = "src/old-tutorial.rs"
+
+[[bin]]
 name = "wifi-test"
 path = "src/wifi-test.rs"
 

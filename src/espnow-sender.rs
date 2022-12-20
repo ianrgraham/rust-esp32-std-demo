@@ -1,4 +1,5 @@
-mod bsc;
+#![allow(unused)]
+use rust_esp32_std_demo::bsc;
 
 use log::*;
 use anyhow::bail;
@@ -10,7 +11,7 @@ use esp_idf_svc::eventloop::EspSystemEventLoop;
 
 use esp_idf_hal::{
     peripherals::Peripherals,
-    peripheral::Peripheral,
+    peripheral::Peripheral, gpio::Pin,
 };
 
 use esp_idf_svc::{
@@ -161,10 +162,13 @@ fn main() -> anyhow::Result<()> {
     //     espnow.send(address, &[idx, jdx])?;
     // }
 
-    let ps = peripherals.pins;
-    let mut keypad = bsc::keypad::Keypad::new(ps)?;
+    let pins = peripherals.pins;
+    let rows = [pins.gpio0.into(), pins.gpio1.into(), pins.gpio2.into(), pins.gpio3.into()];
+    let cols = [pins.gpio4.into(), pins.gpio5.into(), pins.gpio6.into(), pins.gpio7.into()];
+    let mut keypad = bsc::keypad::Keypad::new(rows, cols)?;
     let mut buffer = Vec::<(u8, u8)>::with_capacity(4);
     
+    println!("{:?}", pins.gpio10.pin());
 
     loop {
         std::thread::sleep(std::time::Duration::from_millis(10));

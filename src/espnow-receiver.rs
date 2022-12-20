@@ -1,4 +1,5 @@
-mod bsc;
+#![allow(unused)]
+use rust_esp32_std_demo::bsc;
 
 use log::*;
 use anyhow::bail;

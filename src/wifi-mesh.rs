@@ -2,7 +2,7 @@
 //!
 //! This `libstd` program is for the ESP32-C3-DevKitC-02 board.
 
-mod bsc;
+use rust_esp32_std_demo::bsc;
 
 // Logging macros
 use log::*;

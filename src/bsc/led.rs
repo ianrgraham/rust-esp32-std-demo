@@ -1,5 +1,3 @@
-#![feature(generic_const_exprs)]
-
 use std::ptr::{null, null_mut};
 
 use esp_idf_sys::{
