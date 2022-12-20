@@ -104,3 +104,11 @@ path = "src/wifi-controller.rs"
 [[bin]]
 name = "nothing"
 path = "src/nothing.rs"
+
+[[bin]]
+name = "espnow-sender"
+path = "src/espnow-sender.rs"
+
+[[bin]]
+name = "espnow-receiver"
+path = "src/espnow-receiver.rs"

@@ -1,3 +1,5 @@
+#![feature(generic_const_exprs)]
+
 use std::ptr::{null, null_mut};
 
 use esp_idf_sys::{
@@ -7,8 +9,8 @@ use esp_idf_sys::{
     rmt_tx_config_t, rmt_wait_tx_done, rmt_write_sample, u_int8_t,
 };
 
-use std::ffi::c_void;
 pub use rgb::RGB8;
+use std::ffi::c_void;
 
 const WS2812_T0H_NS: u32 = 350;
 const WS2812_T0L_NS: u32 = 1000;
@@ -89,6 +91,48 @@ unsafe extern "C" fn ws2812_to_rmt(
     *item_num = num;
 }
 
+pub struct ColorBuffer {
+    raw_data: Vec<u8>,
+    num: usize
+}
+
+impl ColorBuffer {
+
+    pub fn new(n: usize) -> Self {
+        Self {
+            raw_data: vec![0; n*3],
+            num: n
+        }
+    }
+
+    fn raw_buffer(&self) -> *const u8 {
+        self.raw_data.as_ptr()
+    }
+
+    fn raw_len(&self) -> usize {
+        self.num * 3
+    }
+
+    pub fn len(&self) -> usize {
+        self.num
+    }
+
+    pub fn fill(&mut self, color: RGB8) {
+        for i in 0..self.num {
+            self.raw_data[i*3] = color.g;
+            self.raw_data[i*3+1] = color.r;
+            self.raw_data[i*3+2] = color.b;
+        }
+    }
+
+    pub fn set(&mut self, index: usize, color: RGB8) {
+        self.raw_data[index*3] = color.g;
+        self.raw_data[index*3+1] = color.r;
+        self.raw_data[index*3+2] = color.b;
+    }
+
+}
+
 pub struct WS2812RMT {
     config: rmt_config_t,
 }
@@ -145,6 +189,24 @@ impl WS2812RMT {
                 self.config.channel,
                 &[color.g, color.r, color.b] as *const u8, // WS2812 expects GRB, not RGB
                 3,
+                true,
+            ))?;
+            esp!(rmt_wait_tx_done(
+                self.config.channel,
+                (timeout_ms as u32 * FREERTOS_HZ) / 1000,
+            ))?;
+        }
+
+        Ok(())
+    }
+
+    pub fn set_pixels(&mut self, colors: &ColorBuffer) -> anyhow::Result<()> {
+        let timeout_ms = colors.len();
+        unsafe {
+            esp!(rmt_write_sample(
+                self.config.channel,
+                colors.raw_buffer(),
+                colors.raw_len(),
                 true,
             ))?;
             esp!(rmt_wait_tx_done(

@@ -93,7 +93,6 @@ pub fn wifi_ap(
     psk: &str
 ) -> anyhow::Result<Box<EspWifi<'static>>> {
 
-    use std::net::Ipv4Addr;
 
     let mut wifi = Box::new(EspWifi::new(modem, sysloop.clone(), None)?);
     let channel = 0;

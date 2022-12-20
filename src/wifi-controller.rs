@@ -13,8 +13,8 @@ use esp_idf_sys as _;
 
 use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_svc::http::server::*;
-use embedded_svc::http::{Method, };
-use esp_idf_svc::espnow::EspNow;
+use embedded_svc::http::Method;
+// use esp_idf_svc::espnow::;
 
 /// This configuration is picked up at compile time by `build.rs` from the
 /// file `cfg.toml`.
