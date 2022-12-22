@@ -84,35 +84,3 @@ rgb = "0.8"
 [build-dependencies]
 embuild = { version = "0.31", features = ["elf"] }
 anyhow = "1"
-
-[[bin]]
-name = "old-tutorial"
-path = "src/old-tutorial.rs"
-
-[[bin]]
-name = "wifi-test"
-path = "src/wifi-test.rs"
-
-[[bin]]
-name = "wifi-server"
-path = "src/wifi-server.rs"
-
-[[bin]]
-name = "wifi-client"
-path = "src/wifi-client.rs"
-
-[[bin]]
-name = "wifi-controller"
-path = "src/wifi-controller.rs"
-
-[[bin]]
-name = "nothing"
-path = "src/nothing.rs"
-
-[[bin]]
-name = "espnow-sender"
-path = "src/espnow-sender.rs"
-
-[[bin]]
-name = "espnow-receiver"
-path = "src/espnow-receiver.rs"

@@ -1,7 +1,8 @@
 use anyhow::bail;
 use embedded_svc::wifi::{
-    ClientConfiguration, Configuration, AccessPointConfiguration, Wifi
+    ClientConfiguration, Configuration, AccessPointConfiguration, Wifi, AuthMethod
 };
+
 use esp_idf_svc::{
     netif::{EspNetif, EspNetifWait}, eventloop::EspSystemEventLoop, wifi::{EspWifi, WifiWait},
 };
@@ -198,4 +199,54 @@ fn ping(ip: embedded_svc::ipv4::Ipv4Addr) -> anyhow::Result<()> {
     info!("Pinging done");
 
     Ok(())
+}
+
+#[allow(unused)]
+enum Mode {
+    STA,
+    AP,
+    Both
+}
+
+fn setup_wifi(
+    modem: impl peripheral::Peripheral<P = esp_idf_hal::modem::Modem> + 'static,
+    sysloop: EspSystemEventLoop,
+    mode: Mode
+) -> anyhow::Result<Box<EspWifi<'static>>> {
+    let mut wifi = Box::new(EspWifi::new(modem, sysloop.clone(), None)?);
+
+    match mode {
+        Mode::STA => wifi.set_configuration(&Configuration::Client(
+            ClientConfiguration{
+                auth_method: AuthMethod::None,
+                ..Default::default()
+            }
+        ))?,
+        Mode::AP => wifi.set_configuration(&Configuration::AccessPoint(
+            AccessPointConfiguration{
+                auth_method: AuthMethod::None,
+                ..Default::default()
+            }
+        ))?,
+        Mode::Both => wifi.set_configuration(&Configuration::Mixed(
+            ClientConfiguration{
+                auth_method: AuthMethod::None,
+                ..Default::default()
+            },
+            AccessPointConfiguration{
+                auth_method: AuthMethod::None,
+                ..Default::default()
+            })
+        )?,
+    }
+
+    wifi.start()?;
+
+    if !WifiWait::new(&sysloop)?
+        .wait_with_timeout(Duration::from_secs(20), || wifi.is_started().unwrap())
+    {
+        bail!("Wifi did not start");
+    }
+
+    Ok(wifi)
 }
