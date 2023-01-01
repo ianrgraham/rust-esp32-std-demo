@@ -90,7 +90,9 @@ fn main() -> anyhow::Result<()> {
 
     // Start the LED off yellow
     let mut led = bsc::led::WS2812RMT::new()?;
-    led.set_pixel(RGB8::new(50, 50, 0))?;
+    let mut color_buffer = bsc::led::ColorBuffer::new(42, bsc::led::ColorOrder::GRB);
+    color_buffer.fill(RGB8::new(0, 0, 0));
+    led.set_pixels(&color_buffer)?;
 
     let mut _wifi = setup_wifi(peripherals.modem, sysloop.clone(), Mode::STA)?;
 
@@ -171,7 +173,7 @@ fn main() -> anyhow::Result<()> {
     println!("{:?}", pins.gpio10.pin());
 
     loop {
-        std::thread::sleep(std::time::Duration::from_millis(10));
+        std::thread::sleep(std::time::Duration::from_millis(16));
         keypad.scan(&mut buffer);
         // println!("Buffer len: {}", buffer.len());
         for (idx, jdx) in buffer.drain(..) {
@@ -181,9 +183,10 @@ fn main() -> anyhow::Result<()> {
                 2 => RGB8::new(50, 0, 0),
                 _ => RGB8::new(0, 0, 0),
             };
-
-            led.set_pixel(color)?;
-            espnow.send(address, &[idx, jdx])?;
+            color_buffer.set(jdx as usize, color);
+            led.set_pixels(&color_buffer)?;
+            
+            espnow.send(address, &[idx, jdx]);
         }
     }
 }

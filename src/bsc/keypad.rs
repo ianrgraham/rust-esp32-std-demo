@@ -29,9 +29,11 @@ impl<'d> Keypad<'d> {
         buffer.clear();
         for row in 0..4 {
             self.rows[row].set_high().unwrap();
+            
             for col in 0..4 {
                 if self.cols[col].is_high() {
                     buffer.push((row as u8, col as u8));
+
                 }
             }
             self.rows[row].set_low().unwrap();

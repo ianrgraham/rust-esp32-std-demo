@@ -88,7 +88,7 @@ fn main() -> anyhow::Result<()> {
 
     info!("Starting wifi...");
 
-    let mut color_buffer = bsc::led::ColorBuffer::new(4);
+    let mut color_buffer = bsc::led::ColorBuffer::new(4, bsc::led::ColorOrder::GRB);
     color_buffer.fill(RGB8::new(50, 0, 0));
 
     // Start the LED off yellow
